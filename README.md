@@ -18,6 +18,24 @@ cd lbnl-shuttle-widget
 uv sync                      # or: python3 -m venv .venv && .venv/bin/pip install .
 ```
 
+### Dependencies
+
+Two packages, both from PyPI (no conda-forge needed):
+[rumps](https://pypi.org/project/rumps/) (menu bar UI) and
+[gtfs-realtime-bindings](https://pypi.org/project/gtfs-realtime-bindings/)
+(realtime feed parsing). Any environment manager works — with conda:
+
+```bash
+conda create -n shuttle python=3.12
+conda activate shuttle
+pip install .
+```
+
+If you're not using the project's `.venv`, activate your environment
+before running the widget or the toggle script (it uses `.venv` when
+present, otherwise whatever `python3` is on your PATH), and replace
+`.venv/bin/python3` with `python3` in the commands below.
+
 ## Configure your stop
 
 The default is **Blue Route Downhill at B48 Firehouse**. To use a
