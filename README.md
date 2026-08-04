@@ -13,7 +13,7 @@ API key needed.
 Requires macOS and Python ≥ 3.10.
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/jaeminy00/lbnl-shuttle-widget.git
 cd lbnl-shuttle-widget
 uv sync                      # or: python3 -m venv .venv && .venv/bin/pip install .
 ```
