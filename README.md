@@ -1,9 +1,11 @@
 # LBNL Shuttle Menu Bar Widget
 
 A tiny macOS menu bar widget that shows a live countdown to the next LBNL
-shuttle at your stop: `🚌 7m` in the menu bar, switching to `🏃 3m` when
-it's time to leave. The dropdown lists the next departures with live
-delay info from the shuttle's realtime feed.
+shuttle at your stop: `🚌 12m` while you have time, `🎒 5m` once you're
+within `pack_minutes` of having to leave, then `🏃 2m` at your leave time
+(the departure minus `walk_minutes`). Both of those are yours to set — see
+[Configure your stop](#configure-your-stop). The dropdown lists the next
+departures with live delay info from the shuttle's realtime feed.
 
 Data comes from LBNL's public TripShot GTFS + GTFS-realtime feeds — no
 API key needed.
@@ -48,7 +50,40 @@ cp config.example.json config.json
 - `route` — route short or long name (e.g. `"Blue Route Uphill"`,
   `"Orange"`; a unique fragment also works)
 - `stop` — stop name, stop id, or a unique fragment of the name
-- `walk_minutes` — your walk to the stop; controls when 🚌 becomes 🏃
+
+### Timing
+
+Two settings decide which of the three menu bar states you see. The values
+shipped in `config.example.json` are just the estimates that work for us —
+they're placeholders, so set them to your own:
+
+- `walk_minutes` — how long it takes *you* to get from your desk to the
+  stop. Your **leave time** is `departure − walk_minutes`.
+- `pack_minutes` — how much notice you want before that leave time, to
+  shut the laptop and grab your things. Set it to `0` to skip the 🎒 state
+  entirely.
+
+Which state shows when:
+
+| when | looks like | color key |
+| --- | --- | --- |
+| more than `pack_minutes` before your leave time | 🚌 12m | `title_color` |
+| within `pack_minutes` of it — pack up | 🎒 5m | `pack_title_color` |
+| at your leave time or later — go now | 🏃 2m | `urgent_title_color` |
+
+The countdown always shows minutes until the shuttle *departs*, not minutes
+until you have to leave, so 🏃 appears with roughly `walk_minutes` still on
+the clock.
+
+### Colors
+
+- `title_color` / `pack_title_color` / `urgent_title_color` — menu bar text
+  color per state. `null` keeps the system default; otherwise use a name
+  (`"yellow"`, `"red"`, `"orange"`, `"green"`, `"blue"`, `"purple"`,
+  `"gray"`, `"white"`, …) or a hex value (`"#ff8800"`). Named colors adapt
+  to light/dark menu bars; hex values and `"white"` don't, so pick
+  something that reads on both — plain `"white"` is invisible on a
+  light-mode menu bar. The emoji keeps its own colors either way.
 
 Find your stop's exact name (and which routes serve it):
 

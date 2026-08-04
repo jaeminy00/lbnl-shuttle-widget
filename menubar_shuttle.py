@@ -3,8 +3,9 @@
 LBNL shuttle menu bar widget (macOS).
 
 Shows a live countdown to the next LBNL shuttle at your stop in the macOS
-menu bar ("🚌 7m", switching to "🏃 3m" when it's time to leave). The
-dropdown lists upcoming departures; Quit turns the widget off.
+menu bar: "🚌 12m" with time to spare, "🎒 5m" for the last pack_minutes
+before you have to leave, then "🏃 2m" once it's time to go. The dropdown
+lists upcoming departures; Quit turns the widget off.
 
 Quick start:
     uv sync                                   # or: pip install .
@@ -46,6 +47,10 @@ DEFAULTS = {
     "walk_minutes": 3,                # your walk to the stop
     "show_departures": 4,             # rows in the dropdown
     "poll_seconds": 30,
+    "pack_minutes": 3,                # 🎒 warning before your leave time
+    "title_color": None,              # menu bar text: null = system default,
+    "pack_title_color": "yellow",     # a name ("red") or hex ("#ff8800")
+    "urgent_title_color": "red",
     "timezone": "America/Los_Angeles",
     "cache_dir": "~/.cache/shuttle-menubar",
 }
@@ -224,11 +229,19 @@ def fetch_rt():
 # ------------------------------------------------ formatting
 
 
+BUS_ICON = "🚌"      # plenty of time
+PACK_ICON = "🎒"     # pack up and go
+URGENT_ICON = "🏃"   # leave now
+
+
 def fmt(deps, now):
     if not deps:
-        return "🚌 —", ["No shuttles in the next 24 h"]
+        return f"{BUS_ICON} —", ["No shuttles in the next 24 h"]
     mins0 = (deps[0]["time"] - now) / 60
-    icon = "🏃" if mins0 - CFG["walk_minutes"] < 2 else "🚌"
+    slack = mins0 - CFG["walk_minutes"]        # minutes until you must leave
+    icon = (URGENT_ICON if slack < 0
+            else PACK_ICON if slack < CFG["pack_minutes"]
+            else BUS_ICON)
     whole = int(mins0)
     title = (f"{icon} {whole}m" if whole < 100
              else f"{icon} {whole // 60}h{whole % 60:02d}")
@@ -286,6 +299,50 @@ def run_test():
     for ln in lines:
         print("  ", ln)
 
+# ------------------------------------------------ menu bar text color
+
+# system* colors are dynamic — they stay legible on light and dark menu bars
+SYSTEM_COLORS = {
+    "red": "systemRedColor", "orange": "systemOrangeColor",
+    "yellow": "systemYellowColor", "green": "systemGreenColor",
+    "mint": "systemMintColor", "teal": "systemTealColor",
+    "cyan": "systemCyanColor", "blue": "systemBlueColor",
+    "indigo": "systemIndigoColor", "purple": "systemPurpleColor",
+    "pink": "systemPinkColor", "brown": "systemBrownColor",
+    "gray": "systemGrayColor", "grey": "systemGrayColor",
+    "white": "whiteColor", "black": "blackColor",
+}
+
+
+def nscolor(spec):
+    """"red" / "#ff8800" → NSColor. None (or unknown) → system default."""
+    from AppKit import NSColor
+    s = str(spec or "").strip().lower()
+    if not s or s in ("auto", "default"):
+        return None
+    if s in SYSTEM_COLORS:
+        return getattr(NSColor, SYSTEM_COLORS[s], lambda: None)()
+    if s.startswith("#"):
+        h = s[1:]
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        if len(h) == 6:
+            try:
+                r, g, b = (int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+            except ValueError:
+                return None
+            return NSColor.colorWithSRGBRed_green_blue_alpha_(r, g, b, 1.0)
+    return None
+
+
+ICON_COLOR_KEY = {PACK_ICON: "pack_title_color",
+                  URGENT_ICON: "urgent_title_color"}
+
+
+def title_color(title):
+    """Which configured color a given menu bar title should be drawn in."""
+    return CFG[ICON_COLOR_KEY.get(title[:1], "title_color")]
+
 # ------------------------------------------------ menu bar app
 
 
@@ -296,12 +353,36 @@ def run_app():
         def __init__(self):
             # quit_button=None: we manage the menu (incl. Quit) ourselves —
             # letting rumps auto-add its quit item collides with our rebuilds
-            super().__init__("🚌 …", quit_button=None)
+            super().__init__(f"{BUS_ICON} …", quit_button=None)
             self.static = None
             self.rt = {}
             self.timer = rumps.Timer(self.tick, CFG["poll_seconds"])
             self.timer.start()
             self.tick(None)
+            # the status item only exists once run() starts, so the title set
+            # above is still uncolored — repaint it as soon as it's there
+            self.paint_timer = rumps.Timer(self.first_paint, 1)
+            self.paint_timer.start()
+
+        def first_paint(self, timer):
+            timer.stop()
+            self.paint(self.title)
+
+        def paint(self, text):
+            """Set the menu bar text, tinted per config."""
+            self.title = text            # plain title; also clears any tint
+            color = nscolor(title_color(text))
+            item = getattr(getattr(self, "_nsapp", None), "nsstatusitem", None)
+            button = item.button() if item is not None else None
+            if color is None or button is None:
+                return
+            from AppKit import (NSAttributedString, NSFontAttributeName,
+                                NSForegroundColorAttributeName)
+            attrs = {NSForegroundColorAttributeName: color}
+            if button.font() is not None:
+                attrs[NSFontAttributeName] = button.font()
+            button.setAttributedTitle_(NSAttributedString.alloc()
+                                       .initWithString_attributes_(text, attrs))
 
         def tick(self, _):
             now = time.time()
@@ -313,7 +394,7 @@ def run_app():
                     if time.time() - os.path.getmtime(cache) > 24 * 3600:
                         self.static = Static(gtfs_bytes(force=True))
             except Exception as ex:
-                self.title = "🚌 ?"
+                self.paint(f"{BUS_ICON} ?")
                 self.rebuild_menu([f"schedule error: {ex}"])
                 return
             try:
@@ -322,7 +403,8 @@ def run_app():
             except Exception:
                 rt_note = "live data unavailable — showing schedule"
             deps = self.static.upcoming(self.rt, now)[:CFG["show_departures"]]
-            self.title, lines = fmt(deps, now)
+            title, lines = fmt(deps, now)
+            self.paint(title)
             if rt_note:
                 lines.append(rt_note)
             self.rebuild_menu(lines)

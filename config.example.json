@@ -3,5 +3,9 @@
   "stop": "B48 Firehouse",
   "walk_minutes": 3,
   "show_departures": 4,
-  "poll_seconds": 30
+  "poll_seconds": 30,
+  "pack_minutes": 3,
+  "title_color": null,
+  "pack_title_color": "yellow",
+  "urgent_title_color": "red"
 }
