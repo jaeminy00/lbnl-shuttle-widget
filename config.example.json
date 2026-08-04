@@ -1,0 +1,7 @@
+{
+  "route": "Blue Route Downhill",
+  "stop": "B48 Firehouse",
+  "walk_minutes": 3,
+  "show_departures": 4,
+  "poll_seconds": 30
+}

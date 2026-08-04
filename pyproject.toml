@@ -1,0 +1,10 @@
+[project]
+name = "lbnl-shuttle-widget"
+version = "1.0.0"
+description = "macOS menu bar widget showing the next LBNL shuttle at your stop"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gtfs-realtime-bindings>=1.0",
+    "rumps>=0.4 ; sys_platform == 'darwin'",
+]

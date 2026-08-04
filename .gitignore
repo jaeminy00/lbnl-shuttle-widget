@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+.DS_Store
+config.json
+nohup.out
+.claude/settings.local.json
