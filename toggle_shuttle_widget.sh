@@ -20,7 +20,9 @@ check_deps() {
 
 if [ "$1" = "--make-app" ]; then
   check_deps
-  APP="$HOME/Applications/Shuttle Widget.app"
+  APP_DIR="/Applications"
+  [ -w "$APP_DIR" ] || APP_DIR="$HOME/Applications"   # non-admin fallback
+  APP="$APP_DIR/Shuttle Widget.app"
   mkdir -p "$APP/Contents/MacOS"
   cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -33,13 +35,16 @@ if [ "$1" = "--make-app" ]; then
   <key>LSUIElement</key><true/>
 </dict></plist>
 PLIST
+  # ponytail: must NOT exec python directly — a bundle whose executable execs a
+  # different binary keeps the app's LaunchServices identity, and macOS then
+  # refuses the NSStatusItem scene (icon never appears). Spawning it detached
+  # via the toggle script gives python a clean identity, same as terminal launch.
   cat > "$APP/Contents/MacOS/ShuttleWidget" <<LAUNCH
 #!/bin/bash
-cd "$PROJECT"
-exec "$PY" menubar_shuttle.py >> /tmp/shuttle_widget.log 2>&1
+exec /bin/bash "$PROJECT/toggle_shuttle_widget.sh"
 LAUNCH
   chmod +x "$APP/Contents/MacOS/ShuttleWidget"
-  echo "Created: $APP  (double-click to start; Quit from the menu to stop)"
+  echo "Created: $APP  (double-click to start; double-click again or Quit from the menu to stop)"
   exit 0
 fi
 

@@ -4,3 +4,4 @@ __pycache__/
 config.json
 nohup.out
 .claude/settings.local.json
+CLAUDE.md

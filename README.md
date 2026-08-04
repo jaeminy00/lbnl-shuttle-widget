@@ -68,8 +68,10 @@ Check your config resolves before launching the widget:
 ```bash
 bash toggle_shuttle_widget.sh              # start; run again to stop
 bash toggle_shuttle_widget.sh --make-app   # make a double-clickable
-                                           # "Shuttle Widget.app" in ~/Applications
+                                           # "Shuttle Widget.app" in /Applications
 ```
+
+The app is a toggle too: double-click to start, double-click again to stop.
 
 The widget refreshes every 30 s. Quit it from its own dropdown menu, the
 toggle script, or by quitting "Shuttle Widget" in Activity Monitor.
